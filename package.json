@@ -1,0 +1,13 @@
+{
+  "name": "pi-desktop-plugin-prompt-presets",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "PI-Desktop plugin: attach a prompt snippet to a single session's system prompt",
+  "scripts": {
+    "test": "node --test test/presets.test.mjs"
+  },
+  "devDependencies": {
+    "jiti": "^2.7.0"
+  }
+}
