@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "local.prompt-presets",
+  "name": "会话提示词预设",
+  "version": "0.2.0",
+  "description": "把一段提示词片段只加到当前会话的系统提示词里，前面或后面均可，不改动全局 AGENTS.md；附带一个预设管理面板。",
+  "author": "local",
+  "main": "main.js",
+  "permissions": ["agent.extension", "ui.view", "fs.read", "fs.write", "fs.delete"],
+  "fs": {
+    "read": { "root": "userSelected" },
+    "write": { "root": "userSelected" },
+    "delete": { "root": "userSelected" }
+  },
+  "contributes": {
+    "agentExtensions": ["src/index.ts"],
+    "views": [
+      {
+        "id": "presets",
+        "title": { "en": "Prompt presets", "zh-CN": "提示词预设" },
+        "icon": "list-checks",
+        "entry": "views/presets.html",
+        "order": 40
+      }
+    ]
+  }
+}

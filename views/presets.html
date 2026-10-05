@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="pi-plugin-chrome" content="v2" />
+    <title>提示词预设</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #181818;
+        --surface: #212121;
+        --surface-hover: color-mix(in oklab, #ffffff 6%, transparent);
+        --fg: #ffffff;
+        --secondary: color-mix(in oklab, #ffffff 70%, transparent);
+        --muted: color-mix(in oklab, #ffffff 52%, transparent);
+        --border: color-mix(in oklab, #ffffff 10%, transparent);
+        --accent: #ffffff;
+        --danger: #ff6b6b;
+      }
+      :root[data-base="light"] {
+        color-scheme: light;
+        --bg: #ffffff;
+        --surface: #f9f9f9;
+        --surface-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
+        --fg: #1a1c1f;
+        --secondary: color-mix(in oklab, #1a1c1f 74%, transparent);
+        --muted: #5d5d5d;
+        --border: color-mix(in oklab, #1a1c1f 10%, transparent);
+        --accent: #1a1c1f;
+        --danger: #c0392b;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        padding: var(--pi-plugin-titlebar-height, 0px) 0 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      header .dir {
+        flex: 1;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        direction: rtl;
+        text-align: left;
+      }
+      main { flex: 1; display: flex; min-height: 0; }
+      #list {
+        width: 34%;
+        min-width: 150px;
+        max-width: 300px;
+        border-right: 1px solid var(--border);
+        overflow: auto;
+        padding: 6px;
+      }
+      .item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: 0;
+        border-radius: 7px;
+        padding: 7px 9px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .item:hover { background: var(--surface-hover); }
+      .item[aria-selected="true"] { background: var(--surface); }
+      .item .name { display: block; font-weight: 520; }
+      .item .meta { display: block; color: var(--muted); font-size: 11px; }
+      #editor { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px; gap: 8px; }
+      #editor[hidden] { display: none; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 7px 9px;
+        background: var(--surface);
+        color: inherit;
+        font: inherit;
+      }
+      textarea {
+        flex: 1;
+        min-height: 160px;
+        resize: none;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 9px;
+        background: var(--surface);
+        color: inherit;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      input:focus-visible, textarea:focus-visible {
+        outline: 2px solid color-mix(in oklab, var(--accent) 45%, transparent);
+        outline-offset: 1px;
+      }
+      button {
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 7px 11px;
+        background: var(--surface);
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      button:hover { background: var(--surface-hover); }
+      button.primary { background: var(--accent); color: var(--bg); border-color: transparent; }
+      button.danger { color: var(--danger); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #empty, #gate {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      #gate[hidden], #empty[hidden] { display: none; }
+      #gate code { color: var(--secondary); font-size: 12px; }
+      .hint { font-size: 12px; max-width: 46ch; }
+      #status { color: var(--muted); font-size: 12px; min-height: 16px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="dir" id="dir">未选择预设目录</span>
+      <button id="pick" type="button">选择目录</button>
+      <button id="refresh" type="button">刷新</button>
+      <button id="create" type="button">新建</button>
+    </header>
+    <main>
+      <div id="list" role="listbox" aria-label="预设列表"></div>
+      <section id="editor" hidden>
+        <div class="row">
+          <input id="id" type="text" spellcheck="false" placeholder="文件名（即预设 id，如 ctf）" />
+          <button id="reveal" type="button">在文件夹中显示</button>
+        </div>
+        <textarea id="raw" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="save" class="primary" type="button">保存</button>
+          <button id="delete" class="danger" type="button">删除</button>
+          <span id="status"></span>
+        </div>
+      </section>
+      <div id="gate" hidden>
+        <p>预设目录不在工作区内，需要你指定一次。</p>
+        <p class="hint">
+          目录选 <code>%USERPROFILE%\.pi\prompt-presets</code>（会话里
+          <code>/preset</code> 读的就是它）。授权只在本次运行有效，重启应用后需要再点一次。
+        </p>
+        <button id="gate-pick" class="primary" type="button">选择预设目录</button>
+      </div>
+      <div id="empty" hidden>
+        <p>这个目录里还没有预设。</p>
+        <p class="hint">点 <strong>新建</strong> 写一个，或放一个 .md 文件进去。</p>
+      </div>
+    </main>
+    <script>
+      const bridge = window.pluginBridge;
+      const $ = (id) => document.getElementById(id);
+      let presets = [];
+      let current = null;
+
+      const TEMPLATE = [
+        "---",
+        "name: 新预设",
+        "description: 一句话说明什么场景用",
+        "position: after",
+        "---",
+        "",
+        "在这里写要加进系统提示词的内容。",
+        "",
+      ].join("\n");
+
+      const applyAppearance = (appearance) => {
+        const base = appearance?.base;
+        document.documentElement.dataset.base =
+          base === "light" || base === "dark"
+            ? base
+            : window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+      };
+      bridge?.on("appearance:changed", applyAppearance);
+      bridge?.invoke("app.getAppearance").then(applyAppearance).catch(() => applyAppearance(null));
+
+      function setStatus(text) {
+        $("status").textContent = text ?? "";
+      }
+
+      function select(id) {
+        current = presets.find((preset) => preset.id === id) ?? null;
+        for (const button of document.querySelectorAll(".item")) {
+          button.setAttribute("aria-selected", String(button.dataset.id === id));
+        }
+        if (!current) {
+          $("editor").hidden = true;
+          return;
+        }
+        $("editor").hidden = false;
+        $("id").value = current.id;
+        $("raw").value = current.raw;
+        setStatus("");
+      }
+
+      function render() {
+        const list = $("list");
+        list.textContent = "";
+        for (const preset of presets) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "item";
+          button.dataset.id = preset.id;
+          button.setAttribute("aria-selected", String(preset.id === current?.id));
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = preset.name;
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          meta.textContent = `${preset.id} · ${preset.position === "before" ? "前置" : "后置"}`;
+          button.append(name, meta);
+          button.addEventListener("click", () => select(preset.id));
+          list.append(button);
+        }
+        const none = presets.length === 0;
+        $("empty").hidden = !none;
+        $("list").hidden = none;
+        if (none) select(null);
+      }
+
+      async function load() {
+        const result = await bridge.invoke("presets:list");
+        $("gate").hidden = Boolean(result?.granted);
+        $("dir").textContent = result?.dir || "未选择预设目录";
+        presets = result?.presets ?? [];
+        if (current) current = presets.find((preset) => preset.id === current.id) ?? null;
+        render();
+        if (current) select(current.id);
+      }
+
+      async function grant() {
+        const result = await bridge.invoke("presets:grant");
+        if (!result?.granted) {
+          setStatus("未授权目录");
+          return;
+        }
+        $("gate").hidden = true;
+        await load();
+      }
+
+      $("pick").addEventListener("click", grant);
+      $("gate-pick").addEventListener("click", grant);
+      $("refresh").addEventListener("click", () => void load().catch((e) => setStatus(String(e.message ?? e))));
+
+      $("create").addEventListener("click", () => {
+        $("gate").hidden = true;
+        $("editor").hidden = false;
+        current = null;
+        $("id").value = "";
+        $("raw").value = TEMPLATE;
+        for (const button of document.querySelectorAll(".item")) {
+          button.setAttribute("aria-selected", "false");
+        }
+        $("id").focus();
+        setStatus("填写文件名后保存");
+      });
+
+      $("save").addEventListener("click", async () => {
+        try {
+          const id = $("id").value.trim();
+          await bridge.invoke("presets:save", { id, raw: $("raw").value });
+          const selected = id;
+          await load();
+          select(selected);
+          setStatus("已保存");
+        } catch (error) {
+          setStatus(String(error?.message ?? error));
+        }
+      });
+
+      $("delete").addEventListener("click", async () => {
+        if (!current) return;
+        const ok = window.confirm(`删除预设 ${current.id}？`);
+        if (!ok) return;
+        try {
+          await bridge.invoke("presets:delete", { id: current.id });
+          current = null;
+          await load();
+          setStatus("已删除");
+        } catch (error) {
+          setStatus(String(error?.message ?? error));
+        }
+      });
+
+      $("reveal").addEventListener("click", async () => {
+        const id = $("id").value.trim();
+        if (!id) return;
+        try {
+          await bridge.invoke("presets:reveal", { id });
+        } catch (error) {
+          setStatus(String(error?.message ?? error));
+        }
+      });
+
+      load().catch((error) => {
+        $("gate").hidden = false;
+        setStatus(String(error?.message ?? error));
+      });
+    </script>
+  </body>
+</html>
